@@ -1,7 +1,10 @@
 const express = require("express");
+const bcrypt = require("bcryptjs");
 
 const db = require("./dbConnectExec.js");
+
 const app = express();
+app.use(express.json());
 
 app.listen(5000, () => {
   console.log("app is running on port 5000");
@@ -18,13 +21,66 @@ app.get("/", (req, res) => {
 //app.post()
 //app.put()
 
-app.get("/movies", (req, res) => {
+app.post("/attendee", async (req, res) => {
+  //res.send("/contacts called");
+
+  //console.log("request body", req.body);
+
+  let nameFirst = req.body.nameFirst;
+  let nameLast = req.body.nameLast;
+  let email = req.body.email;
+  let phone = req.body.phone;
+  let billingAddress = req.body.billingAddress;
+  let password = req.body.password;
+
+  if (
+    !nameFirst ||
+    !nameLast ||
+    !email ||
+    !phone ||
+    !billingAddress ||
+    !password
+  ) {
+    return res.status(400).send("Bad request");
+  }
+
+  nameFirst = nameFirst.replace("'", "''");
+  nameLast = nameLast.replace("'", "''");
+
+  let emailCheckQuery = `SELECT email
+  FROM Attendee
+  WHERE email = '${email}'`;
+
+  let existingUser = await db.executeQuery(emailCheckQuery);
+
+  //console.log("existing user", existingUser);
+
+  if (existingUser[0]) {
+    return res.status(409).send("Duplicate email");
+  }
+
+  let hashedPassword = bcrypt.hashSync(password);
+
+  let insertQuery = `INSERT INTO Attendee(NameFirst, NameLast, Email, Phone, BillingAddress, Password)
+  VALUES('${nameFirst}','${nameLast}','${email}','${phone}','${billingAddress}','${hashedPassword}')`;
+
+  db.executeQuery(insertQuery)
+    .then(() => {
+      res.status(201).send();
+    })
+    .catch((err) => {
+      console.log("error in POST / attendee", err);
+      res.status(500).send();
+    });
+});
+
+app.get("/concert", (req, res) => {
   //get data from the database
   db.executeQuery(
     `SELECT * 
-  FROM Concert
-  LEFT JOIN Venue
-  ON Venue.venuePK = Concert.VenueFK`
+    FROM Concert
+    LEFT JOIN Venue
+    ON Venue.VenuePK = Concert.VenueFK`
   )
     .then((theResults) => {
       res.status(200).send(theResults);
@@ -35,13 +91,13 @@ app.get("/movies", (req, res) => {
     });
 });
 
-app.get("/movies/:pk", (req, res) => {
+app.get("/concert/:pk", (req, res) => {
   let pk = req.params.pk;
   //console.log(pk);
   let myQuery = `SELECT * 
   FROM Concert
   LEFT JOIN Venue
-  ON Venue.venuePK = Concert.VenueFK
+  ON Venue.VenuePK = Concert.VenueFK
   WHERE ConcertPK = ${pk}`;
 
   db.executeQuery(myQuery)
@@ -54,7 +110,7 @@ app.get("/movies/:pk", (req, res) => {
       }
     })
     .catch((err) => {
-      console.log("Error in /movies/:pk", err);
+      console.log("Error in /concert/:pk", err);
       res.status(500).send();
     });
 });
