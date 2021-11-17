@@ -1,7 +1,9 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 const db = require("./dbConnectExec.js");
+const rockwellConfig = require("./config.js");
 
 const app = express();
 app.use(express.json());
@@ -21,8 +23,77 @@ app.get("/", (req, res) => {
 //app.post()
 //app.put()
 
+app.post("/attendee/login", async (req, res) => {
+  //console.log("/attendee/login called", req.body);
+  //1. data validation
+
+  let email = req.body.email;
+  let password = req.body.password;
+
+  if (!email || !password) {
+    return res.status(400).send("Bad request");
+  }
+
+  //2. check that user exists in DB
+
+  let query = `SELECT *
+  FROM Attendee
+  WHERE Email = '${email}'`;
+
+  let result;
+  try {
+    result = await db.executeQuery(query);
+  } catch (myError) {
+    console.log("error in /attendee/login", myError);
+    return res.status(500).send();
+  }
+  //console.log("result", result);
+
+  if (!result[0]) {
+    return res.status(401).send("Invalid user credentials");
+  }
+  //3. check password
+
+  let user = result[0];
+
+  if (!bcrypt.compareSync(password, user.Password)) {
+    console.log("invalid password");
+    return res.status(401).send("Invalid user credentials");
+  }
+
+  //4. generate token
+
+  let token = jwt.sign({ pk: user.CustomerPK }, rockwellConfig.JWT, {
+    expiresIn: "60 minutes",
+  });
+  //console.log("token", token);
+
+  //5. save token in DB and send response
+
+  let setTokenQuery = `UPDATE Attendee
+SET token = '${token}'
+WHERE CustomerPK = ${user.CustomerPK}`;
+
+  try {
+    await db.executeQuery(setTokenQuery);
+
+    res.status(200).send({
+      token: token,
+      user: {
+        NameFirst: user.NameFirst,
+        NameLast: user.NameLast,
+        Email: user.Email,
+        CustomerPK: user.CustomerPK,
+      },
+    });
+  } catch (myError) {
+    console.log("error in setting user token", myError);
+    res.status(500).send();
+  }
+});
+
 app.post("/attendee", async (req, res) => {
-  //res.send("/contacts called");
+  //res.send("/attendee called");
 
   //console.log("request body", req.body);
 
