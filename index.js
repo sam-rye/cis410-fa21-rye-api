@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 
 const db = require("./dbConnectExec.js");
 const rockwellConfig = require("./config.js");
+const auth = require("./middleware/authenticate");
 
 const app = express();
 app.use(express.json());
@@ -22,6 +23,39 @@ app.get("/", (req, res) => {
 
 //app.post()
 //app.put()
+
+//following has to be converted for project
+app.post("/ticket", auth, async (req, res) => {
+  try {
+    let price = req.body.price;
+    let concertFK = req.body.concertFK;
+
+    if (!price || !concertFK) {
+      return res.status(400).send("bad request");
+    }
+
+    //summery = summery.replace("'", "''");
+
+    //console.log("summary", summary);
+    //console.log("here is the customer", req.customer);
+
+    let insertQuery = `INSERT INTO ticket(Price, ConcertFK, CustomerFK)
+    OUTPUT inserted.TicketPK, inserted.Price, inserted.ConcertFK
+    VALUES('${price}','${concertFK}',${req.customer.CustomerPK})`;
+
+    let insertedTicket = await db.executeQuery(insertQuery);
+    //console.log("inserted review", insertedReview);
+    //res.send("here is the response");
+    res.status(201).send(insertedTicket[0]);
+  } catch (err) {
+    console.log("error in POST /ticket", err);
+    res.status(500).send();
+  }
+});
+
+app.get("/attendee/me", auth, (req, res) => {
+  res.send(req.customer);
+});
 
 app.post("/attendee/login", async (req, res) => {
   //console.log("/attendee/login called", req.body);
