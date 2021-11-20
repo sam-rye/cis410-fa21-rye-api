@@ -15,7 +15,7 @@ app.use(cors());
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log("app is running on port ${PORT}");
+  console.log("app is running on port", PORT);
 });
 
 app.get("/hi", (req, res) => {
@@ -29,7 +29,21 @@ app.get("/", (req, res) => {
 //app.post()
 //app.put()
 
-//following has to be converted for project
+app.post("/attendee/logout", auth, (req, res) => {
+  let query = `UPDATE Attendee
+  SET Token = NULL
+  WHERE CustomerPK = ${req.customer.CustomerPK}`;
+
+  db.executeQuery(query)
+    .then(() => {
+      res.status(200).send();
+    })
+    .catch((err) => {
+      console.log("error in POST /attendee/logout", err);
+      res.status(500).send();
+    });
+});
+
 app.post("/ticket", auth, async (req, res) => {
   try {
     let price = req.body.price;

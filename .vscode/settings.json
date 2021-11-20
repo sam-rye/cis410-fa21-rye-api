@@ -1,0 +1,4 @@
+{
+  "appService.defaultWebAppToDeploy": "/subscriptions/48cd5975-8f13-4d5d-b487-809230b98da0/resourceGroups/appsvc_linux_centralus/providers/Microsoft.Web/sites/cis410-fa21-rye-api",
+  "appService.deploySubpath": "."
+}
